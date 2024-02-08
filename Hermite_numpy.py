@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jan 30 14:56:01 2024
 
-@author: u2010868
-"""
 
 import numpy as np
 from math import factorial
