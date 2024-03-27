@@ -54,5 +54,5 @@ axs[1].set_ylabel('log(E)')
 axs[1].set_title(f'Decay constant: {-coefficients[0]}')
 plt.tight_layout()
 
-plt.savefig('/home/matt/PhD/Sketch work/test/subplot.pdf')
+plt.savefig('subplot.pdf')
 plt.show()
