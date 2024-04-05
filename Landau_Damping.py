@@ -25,7 +25,7 @@ eigvec = np.linalg.eig(matrix)[1]
 # Calculate total field
 tot = 0
 
-t = np.linspace(0,20,100)
+t = np.linspace(0,20,1000)
 
 for i in range(n+1):
     tot += (1j*alpha)/(2*k0)*eigvec[:,i][0]**2 *np.exp(1j*k0*eigval[i]*t)
