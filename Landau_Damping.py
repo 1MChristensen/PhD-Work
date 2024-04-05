@@ -17,13 +17,10 @@ a = c = np.array([(i+1)**0.5 for i in range(n)])
 
 # Add collision term -- WIP
 B = 0.0125
-b = np.array([1j*B*i for i in range(n+1)])
-b[1] = 0
-
+b = np.array([-1j*B*i/k0 for i in range(n+1)])
 
 # Generate base matrix
 matrix = np.diag(a,1) + np.diag(c,-1) + np.diag(b)
-print(matrix)
 
 # Alter the first upper and lower diagonal entries
 matrix[0,1] = matrix[1,0] = (1 + k0**(-2))**0.5
@@ -38,7 +35,10 @@ tot = 0
 t = np.linspace(0,30,1000)
 
 for i in range(n+1):
-    tot += (1j*alpha)/(2*k0)*eigvec[:,i][0]**2 *np.exp(1j*k0*eigval[i]*t)
+    #tot += (1j*alpha)/(2*k0)*eigvec[:,i][0]**2 *np.exp(1j*k0*eigval[i]*t)
+    r_val = np.real(eigval[i]); i_val = np.imag(eigval[i])
+    r_vec = np.real(eigvec[:,i])[0]; i_vec = np.imag(eigvec[:,i])[0]
+    tot += (1j*alpha)/(2*k0)*(r_vec*np.cos(i_val*t) - i_vec*np.sin(i_val*t))*np.exp(r_val*t)
 
 # Find the peaks in the oscillations
 peaks, _ = find_peaks(abs(tot))
