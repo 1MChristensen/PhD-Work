@@ -57,7 +57,10 @@ def psi0(x, x0, type='delta', n_bins=10, std=0.03, mu=1):
       for i in range(n_bins):
          psi[np.where(np.abs(x - bin_centers[i]) < bin_intervals/2)] = bin_values[i]
       
-      psi = psi / sum(psi)
+      psi = psi / np.linalg.norm(psi)
+      plt.plot(x, psi)
+      plt.xlim([0.9, 1.1])
+      plt.show()
 
     return psi
 
@@ -117,11 +120,15 @@ def plot_std(x, psi_store, t, save=False, analytical=None, log=False):
   # Plot the standard deviation
   rho_store = np.abs(psi_store)**2
   #rho_store = np.flipud(rho_store)
-  std = np.std(psi_store, axis=0)
+  std = np.sqrt((x**2)@rho_store-(x@rho_store)**2)
+  dx = x[1] - x[0]
+
+
 
   plt.plot(t, std)
   plt.xlabel('$t$')
   plt.ylabel('$\sigma$')
+  plt.axhline(y=dx, color='grey', linestyle='--')
   if log:
     plt.yscale('log')
   if analytical is not None:
