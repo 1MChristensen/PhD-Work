@@ -1,4 +1,4 @@
-# Tools for KvN project
+# Tools for KvN project (1 dimension)
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -82,6 +82,11 @@ def time_evolution(H, psi0, delta, n):
   return psi_t
 
 # Plotting
+def analytical(t, params):
+   A, B, C = params
+   return (A-B*np.exp((t+C)*(A-B)))/(1-np.exp((t+C)*(A-B)))
+
+
 def plot_evolution(x, psi_store, t, save=False):
   # Plot the time evolution
   rho_store = np.abs(psi_store)**2
@@ -99,7 +104,7 @@ def plot_evolution(x, psi_store, t, save=False):
     plt.savefig('plots/KvN_evolution.pdf')
   plt.show()
 
-def plot_mode(x, psi_store, t, save=False, analytical=None):
+def plot_mode(x, psi_store, t, save=False, plot_analytical=False, params=None):
   # Plot the mode
   rho_store = np.abs(psi_store)**2
   #rho_store = np.flipud(rho_store)
@@ -109,21 +114,19 @@ def plot_mode(x, psi_store, t, save=False, analytical=None):
   plt.xlabel('$t$')
   plt.ylabel('$x$')
 
-  if analytical is not None:
-      plt.plot(t, analytical(t), 'r--')
+  if plot_analytical:
+      plt.plot(t, analytical(t, params), 'r--')
 
   if save:
       plt.savefig('plots/KvN_mode.pdf')
   plt.show()
 
-def plot_std(x, psi_store, t, save=False, analytical=None, log=False):
+def plot_std(x, psi_store, t, save=False, plot_analytical=False, log=False):
   # Plot the standard deviation
   rho_store = np.abs(psi_store)**2
   #rho_store = np.flipud(rho_store)
-  std = np.sqrt((x**2)@rho_store-(x@rho_store)**2)
+  std = np.sqrt(((x**2)@rho_store-(x@rho_store)**2)/len(x))
   dx = x[1] - x[0]
-
-
 
   plt.plot(t, std)
   plt.xlabel('$t$')
@@ -131,9 +134,10 @@ def plot_std(x, psi_store, t, save=False, analytical=None, log=False):
   plt.axhline(y=dx, color='grey', linestyle='--')
   if log:
     plt.yscale('log')
-  if analytical is not None:
+  if plot_analytical:
       plt.plot(t, analytical(t), 'r--')
 
   if save:
       plt.savefig('plots/KvN_std.pdf')
   plt.show()
+
