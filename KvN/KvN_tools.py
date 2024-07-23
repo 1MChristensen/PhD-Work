@@ -30,10 +30,13 @@ def KvN_hamiltonian(x, params):
     n = len(x)
     H = np.zeros((n, n), dtype=complex)
 
-    for i in tqdm(range(n)):
-        psi_i = np.zeros(n)
-        psi_i[i] = 1
-        H[:, i] = hamiltonian(x, psi_i, params)
+    #for i in tqdm(range(n)):
+    #    psi_i = np.zeros(n)
+    #    psi_i[i] = 1
+    #    H[:, i] = hamiltonian(x, psi_i, params)
+
+    psi_i = np.eye(n)
+    H = hamiltonian(x, psi_i, params)
 
     return H
 
