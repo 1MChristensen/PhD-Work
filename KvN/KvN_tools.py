@@ -5,27 +5,72 @@ import matplotlib.pyplot as plt
 import scipy.linalg as la
 from tqdm import tqdm
 
+# Discrete Fourier Transform
+def DFT(n):
+   return np.fft.fft(np.eye(n)) # Returns the DFT matrix
+
+# Inverse Discrete Fourier Transform
+def IDFT(n):
+    return np.fft.ifft(np.eye(n)) # Returns the inverse DFT matrix
+
 # Momentum operator
-def P(psi, k):
-    psi_k = np.fft.fft(psi)  # Transform to momentum space
-    p_psi_k = 1j * k * psi_k  # Apply the momentum operator in k-space
-    p_psi = np.fft.ifft(p_psi_k)  # Transform back to position space
+def P(psi,k):
+    psi_k = np.fft.fft(psi)         # Transform to momentum space
+    p_psi_k = 1j  * psi_k * k       # Apply the momentum operator in k-space
+    p_psi = np.fft.ifft(p_psi_k)    # Transform back to position space
     return -1j*np.real(p_psi)
 
-# generic quadratic flow operator
+# Generic quadratic flow operator
 def F(params, x, psi):
-    a, b, c = params
+    a, b, c = params                            # Unpack parameters
     X = np.diag(x)
-    return a*X @ X @ psi + b*X @ psi + c*psi
+    return a*X @ X @ psi + b*X @ psi + c*psi    # Apply the flow operator
+
+# Vectorised momentum operator
+def P_vec(k):
+    DFT_n = DFT(len(k))           # Apply the DFT matrix
+    k_DFT = np.diag(k) @ DFT_n    # Apply the momentum operator in k-space
+    IDFT_n = IDFT(len(k))         # get the inverse DFT matrix
+    k_IDFT = IDFT_n @ k_DFT       # Transform back to position space 
+    return k_IDFT
+
+# Vectorised generic quadratic flow operator
+def F_vec(params, x):
+    a, b, c = params                          # Unpack parameters 
+    X = np.diag(x)
+    return a*X @ X + b*X + c*np.eye(len(x))   # Apply the flow operator
 
 # Hamiltonian
 def hamiltonian(x, psi, params):
-    dx= x[1] - x[0]
-    k = 2 * np.pi * np.fft.fftfreq(len(psi), d=dx)
-    return 0.5*(P(F(params, x, psi),k) + F(params, x, P(psi,k)))
+    dx= x[1] - x[0]                                                 # Get the step size
+    k = 2 * np.pi * np.fft.fftfreq(len(psi), d=dx)                  # Get the k values
+    return 0.5*(P(F(params, x, psi),k) + F(params, x, P(psi,k)))    # Return the Hamiltonian
+
+# Vectorised Hamiltonian
+def hamiltonian_vec(x, psi, params):
+    dx= x[1] - x[0]                                                             # Get the step size
+    k = 2 * np.pi * np.fft.fftfreq(len(psi), d=dx)                              # Get the k values
+    return 0.5*(P_vec(k)@F_vec(params, x)@psi + F_vec(params, x)@P_vec(k)@psi)  # Return the Hamiltonian
+
 
 # KvN Hamiltonian
 def KvN_hamiltonian(x, params):
+    print('Generating the Hamiltonian')
+    n = len(x)
+    H = np.zeros((n, n), dtype=complex)
+
+    for i in tqdm(range(n)):
+        psi_i = np.zeros(n)
+        psi_i[i] = 1
+        H[:, i] = hamiltonian(x, psi_i, params)
+
+    #psi_i = np.eye(n)
+    #H = hamiltonian(x, psi_i, params)
+
+    return H
+
+# Vectorised KvN Hamiltonian
+def KvN_hamiltonian_vec(x, params):
     print('Generating the Hamiltonian')
     n = len(x)
     H = np.zeros((n, n), dtype=complex)
@@ -36,9 +81,10 @@ def KvN_hamiltonian(x, params):
     #    H[:, i] = hamiltonian(x, psi_i, params)
 
     psi_i = np.eye(n)
-    H = hamiltonian(x, psi_i, params)
+    H = hamiltonian_vec(x, psi_i, params)
 
     return H
+
 
 # Gaussian function
 def gaussian(x, mu=0, sig=0.25):
