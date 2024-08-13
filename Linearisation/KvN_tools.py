@@ -3,7 +3,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg as la
-from scipy.integrate import solve_ivp
 from tqdm import tqdm
 
 # Discrete Fourier Transform
@@ -92,7 +91,7 @@ def gaussian(x, mu=0, sig=0.25):
     return 1.0 / (np.sqrt(2.0 * np.pi) * sig) * np.exp(-np.power((x - mu) / sig, 2.0) / 2)
 
 # State initialization
-def psi0(x, x0, type='delta', n_bins=10, std=0.03, plot=False):
+def psi0(x, x0, type='delta', n_bins=10, std=0.03, mu=1):
     print('Initializing the state')
     psi = np.zeros(len(x))
 
@@ -103,10 +102,8 @@ def psi0(x, x0, type='delta', n_bins=10, std=0.03, plot=False):
       psi = gaussian(x, mu=x0, sig=std)
 
       psi = psi / np.linalg.norm(psi)
-      
-    if plot:
       plt.plot(x, psi)
-      plt.xlim([x0 - 0.1, x0 + 0.1])
+      plt.xlim([0.9, 1.1])
       plt.show()
 
     return psi
@@ -134,7 +131,7 @@ def analytical(t, params):
    return (A-B*np.exp((t+C)*(A-B)))/(1-np.exp((t+C)*(A-B)))
 
 
-def plot_evolution(x, psi_store, t, save=False, vmin=0.001, vmax=0.01):
+def plot_evolution(x, psi_store, t, save=False):
   # Plot the time evolution
   rho_store = np.abs(psi_store)**2
   rho_store = np.flipud(rho_store)
@@ -143,7 +140,7 @@ def plot_evolution(x, psi_store, t, save=False, vmin=0.001, vmax=0.01):
   delta = t[1] - t[0]
   grid_extent = (x[0], x[-1])
 
-  plt.imshow(rho_store, aspect='auto', extent=[0, n_steps*delta, *grid_extent], vmin=vmin, vmax=vmax)
+  plt.imshow(rho_store, aspect='auto', extent=[0, n_steps*delta, *grid_extent], vmax=0.01)
   plt.colorbar()
   plt.xlabel('$t$')
   plt.ylabel('$x$')
@@ -151,7 +148,7 @@ def plot_evolution(x, psi_store, t, save=False, vmin=0.001, vmax=0.01):
     plt.savefig('plots/KvN_evolution.pdf')
   plt.show()
 
-def plot_mode(x, psi_store, t, save=False, plot_analytical=False, params=(-1,0,0), x0=1):
+def plot_mode(x, psi_store, t, save=False, plot_analytical=False, params=None):
   # Plot the mode
   rho_store = np.abs(psi_store)**2
   #rho_store = np.flipud(rho_store)
@@ -162,10 +159,7 @@ def plot_mode(x, psi_store, t, save=False, plot_analytical=False, params=(-1,0,0
   plt.ylabel('$x$')
 
   if plot_analytical:
-      
-      sol = solve_ivp(numerical, (t[0], t[-1]), y0=[x0], t_eval=t, args=params)
-      #print(len(sol['t']))
-      plt.plot(sol['t'], sol['y'].T, 'r--')
+      plt.plot(t, analytical(t, params), 'r--')
 
   if save:
       plt.savefig('plots/KvN_mode.pdf')
@@ -175,9 +169,8 @@ def plot_std(x, psi_store, t, save=False, plot_analytical=False, log=False):
   # Plot the standard deviation
   rho_store = np.abs(psi_store)**2
   #rho_store = np.flipud(rho_store)
-  std = np.sqrt((x**2)@rho_store-(x@rho_store)**2)/len(x)
+  std = np.sqrt(((np.diag(x**2))@rho_store-(np.diag(x)@rho_store)**2)/len(x))
   dx = x[1] - x[0]
-  print(std.shape)
 
   plt.plot(t, std)
   plt.xlabel('$t$')
@@ -186,14 +179,10 @@ def plot_std(x, psi_store, t, save=False, plot_analytical=False, log=False):
   if log:
     plt.yscale('log')
   if plot_analytical:
-      x0 = [1]
-      sol = solve_ivp(numerical, (t[0], t[-1]), y0=x0, t_eval=t, args=params)
-      #print(len(sol['t']))
-      plt.plot(sol['t'], sol['y'].T, 'r--')
+      plt.plot(t, analytical(t), 'r--')
 
   if save:
       plt.savefig('plots/KvN_std.pdf')
   plt.show()
+  print(std.shape)
 
-def numerical(t, x, a,b,c):
-   return a*x**2 + b*x + c
