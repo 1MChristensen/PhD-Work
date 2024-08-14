@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg as la
 from tqdm import tqdm
+from datetime import datetime
 
 # Initial state
 def psi0(x, y, x0, y0):
@@ -59,6 +60,7 @@ def F(x, y, mu):
 # Hamiltonian
 def KvN_Hamiltonian(x, y, mu):
     print('Generating the Hamiltonian')
+
     nx = len(x)
     ny = len(y)
 
@@ -92,17 +94,16 @@ def time_evolution(H, psi0, t):
     return psi_t 
 
 # Plotting
-def plot_evolution(x, y, psi_t, t):
+def plot_evolution(x, y, psi_t, t, save=False):
     nx = len(x)
     ny = len(y)    
 
     psi_t = np.flipud(psi_t)
     psi_t = np.reshape(psi_t, (nx, ny, -1), order='F')
-    print('shape of psi_t:', psi_t.shape) 
 
     # Collapse to x
     psi_x = np.sum(psi_t, axis=1)
-    print(psi_x)
+
     # Collapse to y
     psi_y = np.sum(psi_t, axis=0)
 
@@ -114,4 +115,7 @@ def plot_evolution(x, y, psi_t, t):
     plt.colorbar()
     plt.show
     
+    if save:
+        plt.savefig('KvN_evolution.pdf')
+
     return None
