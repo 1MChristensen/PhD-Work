@@ -185,4 +185,3 @@ def plot_std(x, psi_store, t, save=False, plot_analytical=False, log=False):
       plt.savefig('plots/KvN_std.pdf')
   plt.show()
   print(std.shape)
-
