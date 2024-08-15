@@ -3,27 +3,54 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.linalg as la
+from scipy.integrate import solve_ivp
 from tqdm import tqdm
 from datetime import datetime
 
+# Multivariate Gaussian (assuming the covariance matrix is identity*cov)
+def gaussian(x,y, mu, cov):
+    return (2*np.pi*cov)**-1*np.exp(-0.5/cov*((x-mu[0])**2 + (y-mu[1])**2))
+
 # Initial state
-def psi0(x, y, x0, y0):
+def psi0(x, y, x0, y0, type='delta', cov=0.03):
     psi0 = np.zeros((len(x), len(y)))
-    psi0[np.argmin(np.abs(x - x0)), np.argmin(np.abs(y-y0))] = 1 
-    flat_psi0 = psi0.flatten(order='F')
+    mu = (x0, y0)
+
+    if type=='delta':
+        psi0[np.argmin(np.abs(y-y0)), np.argmin(np.abs(x - x0))] = 1 
+        
+        plt.imshow(psi0, aspect='auto', extent=[x[0],x[-1],y[0],y[-1]], origin='lower')
+        plt.savefig('initial.pdf')
+        plt.show()
+
+        flat_psi0 = psi0.flatten(order='F')
+
+    if type=='gaussian':
+        X, Y = np.meshgrid(x,y)
+
+        psi0 = gaussian(X, Y, (x0,y0), cov)
+        #psi0 = np.flipud(psi0)
+        plt.imshow(psi0, aspect='auto', extent=[x[0],x[-1],y[0],y[-1]], origin='lower')
+        plt.savefig('initial.pdf')
+        plt.show()
+
+        flat_psi0 = psi0.flatten(order='F')
+
     return flat_psi0
 
 # X operator
 def X(x, y):
     nx = len(x)
     ny = len(y)
-    return np.kron(np.eye(ny), np.diag(x))
+    #return np.kron(np.eye(nx), np.diag(x))
+    return np.kron(np.diag(x), np.eye(ny))
 
 # Y operator
 def Y(x, y):
     nx = len(x)
     ny = len(y)
-    return np.kron(np.diag(y), np.eye(ny))
+    #return np.kron(np.diag(y), np.eye(ny))
+    return np.kron(np.eye(nx), np.diag(y))
 
 # DFT operator
 def DFT(n):
@@ -47,7 +74,7 @@ def P(x, y):
     P_x = -1j*IDFT(nx) @ kx @ DFT(nx)
     P_y = -1j*IDFT(ny) @ ky @ DFT(ny)
 
-    return np.kron(np.eye(ny), P_x), np.kron(P_y, np.eye(nx))
+    return np.kron(P_x, np.eye(ny)), np.kron(np.eye(nx), P_y)
 
 # Flow operator
 def F(x, y, mu):
@@ -98,24 +125,65 @@ def plot_evolution(x, y, psi_t, t, save=False):
     nx = len(x)
     ny = len(y)    
 
-    psi_t = np.flipud(psi_t)
+    #psi_t = np.flipud(psi_t)
     psi_t = np.reshape(psi_t, (nx, ny, -1), order='F')
 
     # Collapse to x
-    psi_x = np.sum(psi_t, axis=1)
+    psi_x = np.sum(psi_t, axis=0)
 
     # Collapse to y
-    psi_y = np.sum(psi_t, axis=0)
+    psi_y = np.sum(psi_t, axis=1)
 
-    plt.imshow(np.abs(psi_x), aspect='auto')
+    plt.imshow(np.abs(psi_x)**2, aspect='auto',extent=[0, t[-1], x[0], x[-1]], origin='lower')
     plt.colorbar()
+    if save:
+        plt.savefig('plots/KvN_evolution_x.pdf')
+    
     plt.show()
 
-    plt.imshow(np.abs(psi_y), aspect='auto')
-    plt.colorbar()
-    plt.show
-    
+    plt.imshow(np.abs(psi_y)**2, aspect='auto', extent=[0, t[-1], y[0], y[-1]], origin='lower')
+    #plt.colorbar()
     if save:
-        plt.savefig('KvN_evolution.pdf')
+        plt.savefig('plots/KvN_evolution_y.pdf')
+
+    plt.show()
 
     return None
+
+# Plot the mode
+def plot_mode(x, y, psi_t, t, save=False, numerical=False, x0=[-1,1], mu=0.5):
+    plt.show()
+    nx = len(x)
+    ny = len(y)
+
+    #psi_t = np.flipud(psi_t)
+    psi_t = np.reshape(psi_t, (nx, ny, -1), order='F')
+
+    rho_t = np.abs(psi_t)**2
+
+    # Collapse to x
+    rho_x = np.sum(rho_t, axis=0)
+
+    # Collapse to y
+    rho_y = np.sum(rho_t, axis=1)
+
+    x_indices  = np.argmax(rho_x, axis=0)
+    y_indices  = np.argmax(rho_y, axis=0)
+
+    plt.clf()
+    plt.plot(t, x[x_indices], label='KvN $x$ prediction')
+    plt.plot(t, y[y_indices], label='KvN $y$ prediction')
+
+    if numerical:
+        sol = solve_ivp(f, [t[0], t[-1]], x0, t_eval=t, args=[mu])
+        x_sol, y_sol = sol['y']
+        plt.plot(t, x_sol, label='Numerical $x$ solution')
+        plt.plot(t, y_sol, label='Numerical $y$ solution')
+    plt.legend()
+    if save:
+        plt.savefig('plots/KvN_mode_xy.pdf')
+
+    plt.show()
+    
+def f(t, y, mu):
+    return np.array([y[1], -y[0] + mu*(1-y[0]**2)*y[1]])
