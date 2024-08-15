@@ -185,5 +185,26 @@ def plot_mode(x, y, psi_t, t, save=False, numerical=False, x0=[-1,1], mu=0.5):
 
     plt.show()
     
+    if numerical:
+        return x[x_indices], y[y_indices], x_sol, y_sol
+    
+    return None
+
+# Van der Pol oscillator
 def f(t, y, mu):
     return np.array([y[1], -y[0] + mu*(1-y[0]**2)*y[1]])
+
+def find_prediction_length(x_pred, y_pred, x_sol, y_sol, t, tol=0.1):
+    n = len(x_pred)
+
+    for i in range(n):
+        if np.abs(x_pred[i] - x_sol[i]) > tol:
+            x_pred_length = t[i]
+            break
+
+    for i in range(n):
+        if np.abs(y_pred[i] - y_sol[i]) > tol:
+            y_pred_length = t[i]
+            break
+
+    return x_pred_length, y_pred_length
