@@ -1,38 +1,28 @@
+import KvN_tools as kvn
 import numpy as np
-import KvN_tools_md as kvn_md
-
-mu = 0.1
 
 # Set up the grid
-nx = ny = 60
-x_extent = (-1,1)
-y_extent = (-1,1)
-x = np.linspace(*x_extent, nx)
-y = np.linspace(*y_extent, ny)
-
-x0 = 0.5
-y0 = 0
-
+n_qubits = 10
+n_grid = 2**n_qubits
+grid_extent = (0,2)
+x = np.linspace(*grid_extent, n_grid)
 
 # Set up time
-n_steps = 2000
+n_steps = 3000
 delta = 0.01
 t = np.linspace(0, n_steps*delta, n_steps)
 
 # Set up the initial state (delta in this case)
-psi = kvn_md.psi0(x, y, x0, y0, type='delta')
+psi = kvn.psi0(x, 1, type='gaussian', plot=False)
 
-# Generate the Hamiltonian
-H = kvn_md.KvN_Hamiltonian(x, y, mu)
+# Generate the Hamiltonian to solve generic quadratic ODE, 
+# i.e. ax^2 + bx + c where a,b,c are in params list
+params = (-1,0,0)
 
-# Time evolve the state
-psi_store = kvn_md.time_evolution(H, psi, t)
+H_vec = kvn.KvN_hamiltonian_vec(x, params, deriv_type='FFT')
+psi_store = kvn.time_evolution(H_vec, psi, delta, n_steps)
+kvn.plot_evolution(x, psi_store, t, save=True,  vmax=0.05)
+kvn.plot_mode(x, psi_store, t, plot_analytical=False, params=(-1,0,0), save=True)
 
-# Plot the results
-kvn_md.plot_evolution(x, y, psi_store, t, save=True)
-
-x_pred, y_pred, x_sol, y_sol = kvn_md.plot_mode(x,y,psi_store,t, save=True, numerical=True, x0=[x0,y0], mu=mu)
-
-x_pred_length, y_pred_length = kvn_md.find_prediction_length(x_pred, y_pred, x_sol, y_sol)
-
-print(f'Predicted length: {x_pred_length}, {y_pred_length}')
+#kvn.plot_evolution_mode(x, psi_store, t, save=True, plot_analytical=False, params=(-1,0,0), filename='KvN_delta_FFT')
+kvn.plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=False, params=(-1,0,0), filename='KvN_gaussian_FD')

@@ -34,6 +34,8 @@ def psi0(x, y, x0, y0, type='delta', cov=0.03):
         plt.savefig('initial.pdf')
         plt.show()
 
+        #psi0 = psi0/sum(psi0)
+
         flat_psi0 = psi0.flatten(order='F')
 
     return flat_psi0
@@ -61,18 +63,23 @@ def IDFT(n):
     return np.fft.ifft(np.eye(n))
 
 # Momentum operator
-def P(x, y):
+def P(x, y, type='FFT'):
     nx = len(x)
     ny = len(y)
     
     dx = x[1] - x[0]
     dy = y[1] - y[0]
 
-    kx = np.diag(1j * np.fft.fftfreq(nx, dx) * 2 * np.pi)
-    ky = np.diag(1j * np.fft.fftfreq(ny, dy) * 2 * np.pi)
+    if type=='FFT':
+        kx = np.diag(1j * np.fft.fftfreq(nx, dx) * 2 * np.pi)
+        ky = np.diag(1j * np.fft.fftfreq(ny, dy) * 2 * np.pi)
 
-    P_x = -1j*IDFT(nx) @ kx @ DFT(nx)
-    P_y = -1j*IDFT(ny) @ ky @ DFT(ny)
+        P_x = -1j*IDFT(nx) @ kx @ DFT(nx)
+        P_y = -1j*IDFT(ny) @ ky @ DFT(ny)
+
+    if type=='FD':
+        P_x =  1j/(2*dx)*(np.diag(np.ones(len(x)-1), k=-1) - np.diag(np.ones(len(x)-1), k=1))
+        P_y =  1j/(2*dy)*(np.diag(np.ones(len(y)-1), k=-1) - np.diag(np.ones(len(y)-1), k=1))
 
     return np.kron(P_x, np.eye(ny)), np.kron(np.eye(nx), P_y)
 
@@ -85,7 +92,7 @@ def F(x, y, mu):
     return Y_op, -X_op + mu*(Y_op - X_op@X_op@Y_op)
 
 # Hamiltonian
-def KvN_Hamiltonian(x, y, mu):
+def KvN_Hamiltonian(x, y, mu, deriv_type='FFT'):
     print('Generating the Hamiltonian')
 
     nx = len(x)
@@ -93,7 +100,7 @@ def KvN_Hamiltonian(x, y, mu):
 
     H = np.zeros((nx*ny, nx*ny), dtype=complex)
     
-    P_x, P_y = P(x, y)
+    P_x, P_y = P(x, y, type=deriv_type)
     F_x, F_y = F(x, y, mu)
 
     H = 0.5*(P_x @ F_x + F_x @ P_x + P_y @ F_y + F_y @ P_y)
@@ -201,10 +208,23 @@ def find_prediction_length(x_pred, y_pred, x_sol, y_sol, t, tol=0.1):
         if np.abs(x_pred[i] - x_sol[i]) > tol:
             x_pred_length = t[i]
             break
-
+        x_pred_length = t[i]
+        
     for i in range(n):
         if np.abs(y_pred[i] - y_sol[i]) > tol:
             y_pred_length = t[i]
             break
-
+        y_pred_length = t[i]
     return x_pred_length, y_pred_length
+
+
+# get sparsity function
+def get_sparsity(A):
+    nonzero = 0
+    most_nonzero = 0
+    for i in range(A.shape[0]): 
+        nonzero = np.count_nonzero(A == 0)
+        if nonzero > most_nonzero:
+            most_nonzero = nonzero
+
+    return most_nonzero
