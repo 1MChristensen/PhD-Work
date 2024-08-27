@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import scipy.linalg as la
 import scipy.sparse as sparse
 from scipy.integrate import solve_ivp
@@ -346,8 +347,10 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
     where_x0 = np.argmin((x-x0)**2)
     grid_extent = (x[0], x0)
 
+    print(rho_store)
+
     rho_backup = rho_store
-    rho_store = rho_store[where_x0:-1, :]
+    #rho_store = rho_store[where_x0:-1, :]
 
     #df = pd.DataFrame(rho_store)
     #df.to_csv('matrix.csv')
@@ -371,6 +374,7 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
         spine.set_color('grey')  # Set the color of the spine
         spine.set_linewidth(1)    # Set the width of the spine
 
+    print(rho_store)
 
     rho_store = np.flipud(rho_store)
     max_indices = np.argmax(rho_store, axis=0)
@@ -394,12 +398,13 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
     #    plt.savefig('plots/KvN_mode.pdf')
     #plt.show()
 
-    psi0 = rho_backup[:,0]
+    psi0 = rho_store[:,0]
+    #psi0 = rho_backup[:,0]
     
     ax[2].plot(x,psi0)
     ax[2].set_xlabel('$x(t=0)$', fontsize=16)
     ax[2].set_ylabel('$\psi(x,t)$', fontsize=16)
-    ax[2].set_xlim([x0-0.2,x0+0.2])
+    ax[2].set_xlim([x0-0.2, x0+0.2])
 
     ax[0].text(0.6, 1.05, 'a)', fontsize=16, color='#3C3C3C')
     ax[1].text(-0.5, 1.1, 'b)', fontsize=16, color='#3C3C3C')
@@ -421,3 +426,86 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
     #if save:
     #  plt.savefig(f'plots/{filename}.pdf')
     #plt.show()
+
+# Plot std, evolution and mode on a subplots
+def plot_std_evolution_mode(x, psi_store, t, save=True, plot_analytical=False, params=(-1,0,0), x0=1, filename='test'):
+     # Plot the time evolution
+    rho_store = np.abs(psi_store)**2
+    rho_store = np.flipud(rho_store)
+
+    n_steps = len(t)
+    delta = t[1] - t[0]
+    where_x0 = np.argmin((x-x0)**2)
+    #grid_extent = (x[0], x0)
+    grid_extent = (x[0], x[-1])
+    #print(rho_store)
+
+    rho_backup = rho_store.copy()
+    #rho_store = rho_store[where_x0:-1, :]
+
+    #df = pd.DataFrame(rho_store)
+    #df.to_csv('matrix.csv')
+
+    fig, ax = plt.subplots(3,1, figsize=(6,8))
+
+    minimum_val = 1e-8
+
+    rho_backup[rho_backup<=minimum_val] = minimum_val
+
+    cax = ax[0].imshow(rho_backup, aspect='auto', extent=[0, n_steps*delta, *grid_extent], norm=LogNorm(vmin=minimum_val, vmax=rho_backup.max()),cmap='plasma')
+    cbar = fig.colorbar(cax)
+    ax[0].set_xlabel('$t$', fontsize=16)
+    ax[0].set_ylabel('$x(t)$', fontsize=16)
+    ax[0].grid(False)
+    #np.savetxt("matrix.txt", rho_store, delimiter=",", fmt="%f")
+
+    for spine in ax[0].spines.values():
+        spine.set_visible(True)  # Turn on the spine
+        spine.set_color('grey')  # Set spine color
+        spine.set_linewidth(1)    # Set spine line width
+
+    for spine in cbar.ax.spines.values():
+        spine.set_visible(True)  # Make the spine visible
+        spine.set_color('grey')  # Set the color of the spine
+        spine.set_linewidth(1)    # Set the width of the spine
+
+    #print(rho_store)
+
+    #rho_store = rho_backup
+    rho_store = np.flipud(rho_store)
+    max_indices = np.argmax(rho_store, axis=0)
+
+    ax[1].plot(t, x[max_indices])
+    ax[1].set_xlabel('$t$', fontsize=16)
+    ax[1].set_ylabel('$x(t)$', fontsize=16)
+
+    sol = solve_ivp(numerical, (t[0], t[-1]), y0=[x0], t_eval=t, args=params)
+    ax[1].plot(sol.t, sol.y.T, linestyle='--')
+
+    psi0 = rho_store[:,0]
+
+    dx = x[1] - x[0]
+
+    X = np.diag(x)
+    
+    term_1 = X@X@rho_store
+    term_2 = X@rho_store
+
+    std = np.sqrt(np.sum(term_1, axis=0) - (np.sum(term_2, axis=0))**2)
+    
+    #std = np.std(rho_store, axis=0)
+    #print(std.shape)
+    ax[2].plot(t, std)
+    ax[2].axhline(y=dx, color='black', linestyle='--')
+    ax[2].set_xlabel('$t$')
+    ax[2].set_ylabel('STD')
+    ax[2].set_yscale('log')
+
+    #print(rho_store.shape)
+    print('Min. STD:', np.min(std))
+    print('dx:', dx)
+    plt.tight_layout()
+
+    if save:
+       plt.savefig(f'plots/{filename}.pdf')
+    plt.show()
