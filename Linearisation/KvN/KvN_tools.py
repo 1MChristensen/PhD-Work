@@ -20,21 +20,8 @@ def DFT(n):
 def IDFT(n):
     return np.fft.ifft(np.eye(n)) # Returns the inverse DFT matrix
 
-# Momentum operator
-def P(psi,k):
-    psi_k = np.fft.fft(psi)         # Transform to momentum space
-    p_psi_k = 1j  * psi_k * k       # Apply the momentum operator in k-space
-    p_psi = np.fft.ifft(p_psi_k)    # Transform back to position space
-    return -1j*np.real(p_psi)
-
-# Generic quadratic flow operator
-def F(params, x, psi):
-    a, b, c = params                            # Unpack parameters
-    X = np.diag(x)
-    return a*X @ X @ psi + b*X @ psi + c*psi    # Apply the flow operator
-
 # Vectorised momentum operator
-def P_vec(x, type='FFT'):
+def P(x, type='FFT'):
     dx = x[1] - x[0]
     if type=='FFT': # FFT based derivative
         k = 2 * np.pi * np.fft.fftfreq(len(x), d=dx)  # Get k values
@@ -50,40 +37,19 @@ def P_vec(x, type='FFT'):
     return P
 
 # Vectorised generic quadratic flow operator
-def F_vec(params, x):
-    a, b, c = params                          # Unpack parameters 
-    X = np.diag(x)
-    return a*X @ X + b*X + c*np.eye(len(x))   # Apply the flow operator
-
-# Hamiltonian
-def hamiltonian(x, psi, params):
-    dx= x[1] - x[0]                                                 # Get the step size
-    k = 2 * np.pi * np.fft.fftfreq(len(psi), d=dx)                  # Get the k values
-    return 0.5*(P(F(params, x, psi),k) + F(params, x, P(psi,k)))    # Return the Hamiltonian
-
+def F(params, x, type='quadratic'):
+    if type == 'quadratic':
+        a, b, c = params                          # Unpack parameters 
+        X = np.diag(x)
+        return a*X @ X + b*X + c*np.eye(len(x))   # Apply the flow operator
+        
 # Vectorised Hamiltonian
 def hamiltonian_vec(x, psi, params, deriv_type='FFT'):
     dx= x[1] - x[0]                                                                                              # Get the step size
-    return 0.5*(P_vec(x, type=deriv_type)@F_vec(params, x)@psi + F_vec(params, x)@P_vec(x,type=deriv_type)@psi)  # Return the Hamiltonian
-
-# KvN Hamiltonian
-def KvN_hamiltonian(x, params):
-    print('Generating the Hamiltonian')
-    n = len(x)
-    H = np.zeros((n, n), dtype=complex)
-
-    for i in tqdm(range(n)):
-        psi_i = np.zeros(n)
-        psi_i[i] = 1
-        H[:, i] = hamiltonian(x, psi_i, params)
-
-    #psi_i = np.eye(n)
-    #H = hamiltonian(x, psi_i, params)
-
-    return H
+    return 0.5*(P(x, type=deriv_type)@F(params, x)@psi + F(params, x)@P(x,type=deriv_type)@psi)  # Return the Hamiltonian
 
 # Vectorised KvN Hamiltonian
-def KvN_hamiltonian_vec(x, params, deriv_type='FFT'):
+def KvN_hamiltonian(x, params, deriv_type='FFT'):
     print('Generating the Hamiltonian')
     n = len(x)
     H = np.zeros((n, n), dtype=complex)
@@ -104,8 +70,8 @@ def KvN_hamiltonian_fast(x, params):
     n = len(x)
     H = np.zeros((n, n), dtype=complex)
 
-    F = F_vec(params, x)
-    P = P_vec(x, type='FD')
+    F = F(params, x)
+    P = P(x, type='FD')
 
     H = 0.5*(F@P + P@F)
 
@@ -127,7 +93,11 @@ def psi0(x, x0, type='delta', n_bins=10, std=0.03, plot=False):
       psi = gaussian(x, mu=x0, sig=std)
 
       psi = psi / np.linalg.norm(psi)
-      
+    
+    else: 
+       raise ValueError(f"No regocnised initial conidtion {type}")
+
+
     if plot:
       plt.plot(x, psi)
       plt.xlim([x0 - 0.1, x0 + 0.1])
@@ -347,7 +317,7 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
     where_x0 = np.argmin((x-x0)**2)
     grid_extent = (x[0], x0)
 
-    print(rho_store)
+    #print(rho_store)
 
     rho_backup = rho_store
     #rho_store = rho_store[where_x0:-1, :]
@@ -374,7 +344,7 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
         spine.set_color('grey')  # Set the color of the spine
         spine.set_linewidth(1)    # Set the width of the spine
 
-    print(rho_store)
+    #print(rho_store)
 
     rho_store = np.flipud(rho_store)
     max_indices = np.argmax(rho_store, axis=0)
@@ -406,9 +376,9 @@ def plot_initial_evolution_mode(x, psi_store, t, save=True, plot_analytical=Fals
     ax[2].set_ylabel('$\psi(x,t)$', fontsize=16)
     ax[2].set_xlim([x0-0.2, x0+0.2])
 
-    ax[0].text(0.6, 1.05, 'a)', fontsize=16, color='#3C3C3C')
-    ax[1].text(-0.5, 1.1, 'b)', fontsize=16, color='#3C3C3C')
-    ax[2].text(0.03, 1.05, 'c)', transform=ax[2].transAxes, fontsize=16, color='#3C3C3C')
+    #ax[0].text(0.6, 1.05, 'a)', fontsize=16, color='#3C3C3C')
+    #ax[1].text(-0.5, 1.1, 'b)', fontsize=16, color='#3C3C3C')
+    #ax[2].text(0.03, 1.05, 'c)', transform=ax[2].transAxes, fontsize=16, color='#3C3C3C')
 
     plt.tight_layout()
 
@@ -475,13 +445,13 @@ def plot_std_evolution_mode(x, psi_store, t, save=True, plot_analytical=False, p
     rho_store = np.flipud(rho_store)
     max_indices = np.argmax(rho_store, axis=0)
 
-    ax[1].plot(t, x[max_indices])
+    ax[1].plot(t, x[max_indices], label='KvN solution')
     ax[1].set_xlabel('$t$', fontsize=16)
     ax[1].set_ylabel('$x(t)$', fontsize=16)
 
     sol = solve_ivp(numerical, (t[0], t[-1]), y0=[x0], t_eval=t, args=params)
-    ax[1].plot(sol.t, sol.y.T, linestyle='--')
-
+    ax[1].plot(sol.t, sol.y.T, linestyle='--', label='Numerical solution')
+    ax[1].legend()
     psi0 = rho_store[:,0]
 
     dx = x[1] - x[0]
@@ -493,9 +463,16 @@ def plot_std_evolution_mode(x, psi_store, t, save=True, plot_analytical=False, p
 
     std = np.sqrt(np.sum(term_1, axis=0) - (np.sum(term_2, axis=0))**2)
     
+    epsilon = 1e-10
+
+    nyquist_condition = np.pi * std / np.sqrt(np.log(2*np.pi*std**2/epsilon))
+
+    print(f'Min. Nyquist condition: {np.min(nyquist_condition)}')
+
     #std = np.std(rho_store, axis=0)
     #print(std.shape)
-    ax[2].plot(t, std)
+    ax[2].plot(t, std, label='STD')
+    ax[2].plot(t, nyquist_condition, label='Nyquist')
     ax[2].axhline(y=dx, color='black', linestyle='--')
     ax[2].set_xlabel('$t$')
     ax[2].set_ylabel('STD')
@@ -504,8 +481,98 @@ def plot_std_evolution_mode(x, psi_store, t, save=True, plot_analytical=False, p
     #print(rho_store.shape)
     print('Min. STD:', np.min(std))
     print('dx:', dx)
+
+    #print(idx)
+    #print(f'Crossover point: {t[idx]}')
+
+    if len(np.where(nyquist_condition < dx)[0]) != 0:
+        # Plot Nyquist cutoff
+        idx = np.min(np.where(nyquist_condition < dx)[0])
+        ax[0].axvline(t[idx])
+    if len(np.where(std < dx)[0]) !=0:
+        # Plot STD cutoff
+        idx = np.min(np.where(std < dx)[0])
+        ax[0].axvline(t[idx])
+
+
+
     plt.tight_layout()
 
     if save:
        plt.savefig(f'plots/{filename}.pdf')
     plt.show()
+
+# Get sig0
+def sig0(x, psi0):
+    X = np.diag(x)
+
+    rho = np.abs(psi0)**2
+
+    term_1 = X@X@rho
+    term_2 = X@rho
+
+    std = np.sqrt(np.sum(term_1, axis=0) - (np.sum(term_2, axis=0))**2)
+
+    return std
+
+
+# Time evolve the STD of the system
+def sigma(x, psi0, sig0, H, N, delta):
+   
+    # Time evolution operators
+    U1 = la.expm(-1.0j*H*delta)
+    U2 = la.expm(1.0j*H.conjugate()*delta)
+
+    U1_n = U1.copy()
+    U2_n = U2.copy()
+
+    I_n = np.eye(U1.shape[0])
+
+    X = np.diag(x)
+
+    sigs = np.zeros(N, dtype=complex)
+
+    sigs[0] = sig0
+
+    T1 = delta**(-1) * (U1 - I_n)@U1
+    T2 = delta**(-1) * (U2 - I_n)@U2
+
+    for n in tqdm(range(1, N), desc='Sigma evolution'):
+        # First determine S
+        T1 = T1@U1
+        T2 = T2@U2
+
+        S1 = (T1 @ psi0).T @ X @ X @ (U2_n @ psi0) + (U1_n @ psi0).T @ X @ X @ (T2 @ psi0)
+        S2 = (T1 @ psi0).T @ X @ (U2_n @ psi0) + (U1_n @ psi0).T @ X @ (T2 @ psi0)
+
+        # Next determine D        
+        D = (U1_n @ psi0).T @ X @ (U2_n @ psi0)
+
+        if(n==1):
+           print(f'S1: {S1}, S2: {S2}, D: {D}')
+
+        sigs[n] = sigs[n-1] + 0.5 * delta * sigs[n-1]**(-1) * (S1 - 2*D*S2)
+
+        U1_n = U1_n@U1
+        U2_n = U2_n@U2
+
+    return sigs
+
+# Plot the sigmas for comparison
+def plot_sigma(x, psi_store, t, sig_num):
+    
+    rho_store = np.abs(psi_store)**2
+    rho_store = np.flipud(rho_store)
+
+    X = np.diag(x)
+
+    term_1 = X@X@rho_store
+    term_2 = X@rho_store
+
+    std = np.sqrt(np.sum(term_1, axis=0) - (np.sum(term_2, axis=0))**2)
+
+    plt.plot(t, std)
+    plt.plot(t, sig_num)
+    plt.savefig('plots/test.pdf')
+    plt.show()
+
